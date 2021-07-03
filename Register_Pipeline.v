@@ -12,7 +12,7 @@
 module Register_Pipeline
 #(
 	parameter N_BITS = 32,
-	parameter RST_VALUE = 0
+	parameter RST_VALUE = {N_BITS{1'b0}}
 )
 (
 	input clk,

@@ -44,6 +44,7 @@ wire reg_dst_w;
 wire alu_rc_w;
 wire reg_write_w;
 wire zero_w;
+wire zero_Pipe_EXMEM_w;
 wire mem_to_reg_w;
 wire mem_read_w;
 wire mem_write_w;
@@ -59,7 +60,9 @@ wire [1:0] jmp_ctl_alu_ctl_w;
 wire [2:0] alu_op_w;
 wire [3:0] alu_operation_w;
 wire [4:0] write_register_w;
+wire [4:0] write_register_Pipe_EXMEM_w;
 wire [4:0] regs_dst_w;
+wire [4:0] control_out_Pipe_EXMEM_w;
 wire [14:0] control_out_w;
 wire [14:0] control_out_Pipe_IDEX_w;
 wire [31:0] instruction_Pipe_IDEX_w;
@@ -69,11 +72,13 @@ wire [31:0] instruction_Pipe_IFID_w;
 wire [31:0] read_data_1_Pipe_IDEX_w;
 wire [31:0] read_data_1_w;
 wire [31:0] read_data_2_Pipe_IDEX_w;
+wire [31:0]	read_data_2_Pipe_EXMEM_w;
 wire [31:0] read_data_2_w;
 wire [31:0] inmmediate_extend_Pipe_IDEX_w;
 wire [31:0] inmmediate_extend_w;
 wire [31:0] read_ata_2_r_nmmediate_w;
 wire [31:0] alu_result_w;
+wire [31:0] alu_result_Pipe_EXMEM_w;
 wire [31:0] pc_plus_4_Pipe_IDEX_w;
 wire [31:0] pc_plus_4_Pipe_IFID_w;
 wire [31:0] pc_plus_4_w;
@@ -83,6 +88,7 @@ wire [31:0] shifted_data_w;
 wire [31:0] write_data_reg_file_w;
 wire [31:0] sl2_imm_w;
 wire [31:0] branch_address_w;
+wire [31:0] branch_address_Pipe_EXMEM_w;
 wire [31:0] new_pc_w;
 wire [31:0] pc_no_jmp_w;
 wire [31:0] jmp_address_w;
@@ -187,10 +193,10 @@ Data_Memory
 DATA_MEMORY			//create data memory instance
 (
 	.clk(clk),
-	.mem_read_i(control_out_Pipe_IDEX_w[6]),
-	.mem_write_i(control_out_Pipe_IDEX_w[5]),
-	.write_data_i(read_data_2_Pipe_IDEX_w),
-	.address_i(alu_result_w),
+	.mem_read_i(control_out_Pipe_EXMEM_w[3]),
+	.mem_write_i(control_out_Pipe_EXMEM_w[2]),
+	.write_data_i(read_data_2_Pipe_EXMEM_w),
+	.address_i(alu_result_Pipe_EXMEM_w),
 	.data_o(read_data_memory_w)
 );
 
@@ -201,7 +207,7 @@ Multiplexer_2_to_1
 MUX_READ_DATA_MEM_OR_ALU_RESULT		//4	
 (
 	.selector_i(control_out_Pipe_IDEX_w[8]),
-	.data_0_i(alu_result_w),
+	.data_0_i(alu_result_Pipe_EXMEM_w),
 	.data_1_i(read_data_memory_w),
 	.mux_o(write_back_w)
 
@@ -233,8 +239,8 @@ REGISTER_FILE_UNIT
 (
 	.clk(clk),
 	.reset(reset),
-	.reg_write_i(control_out_Pipe_IDEX_w[7]),
-	.write_register_i(write_register_w),
+	.reg_write_i(control_out_Pipe_EXMEM_w[4]),
+	.write_register_i(write_register_Pipe_EXMEM_w),
 	.read_register_1_i(instruction_Pipe_IFID_w[25:21]),
 	.read_register_2_i(instruction_Pipe_IFID_w[20:16]),
 	.write_data_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
@@ -375,11 +381,12 @@ PC_PLUS4_OR_BRANCH			//5
 (
 	.selector_i(is_branch_w),
 	.data_0_i(pc_plus_4_Pipe_IDEX_w),
-	.data_1_i(branch_address_w),
+	.data_1_i(branch_address_Pipe_EXMEM_w),
 	.mux_o(pc_no_jmp_w)
 );
 
-assign is_branch_w = (control_out_Pipe_IDEX_w[4] & ~zero_w) | (control_out_Pipe_IDEX_w[3] & zero_w);
+assign is_branch_w = (control_out_Pipe_EXMEM_w[1] & ~zero_Pipe_EXMEM_w) | 
+					(control_out_Pipe_EXMEM_w[0] & zero_Pipe_EXMEM_w);
 
 
 //******************************************************************/
@@ -522,5 +529,90 @@ PIPER_IDEX_CONTROL
 	.data_o(control_out_Pipe_IDEX_w)
 );
 
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_EXMEM_ALU_RESULT
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(alu_result_w),
+	.data_o(alu_result_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_EXMEM_ALU_ZERO
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(zero_w),
+	.data_o(zero_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_EXMEM_WRITE_DATA
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(read_data_2_Pipe_IDEX_w),
+	.data_o(read_data_2_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_EXMEM_BRANCH_ADDRESS
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(branch_address_w),
+	.data_o(branch_address_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(5)
+)
+PIPER_EXMEM_WRITE_REGISTER
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(write_register_w),
+	.data_o(write_register_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(5)
+)
+PIPER_EXMEM_CONTROL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(
+		{
+			control_out_Pipe_IDEX_w[7],		//reg_write [4]
+			control_out_Pipe_IDEX_w[6],		//mem_read [3]
+			control_out_Pipe_IDEX_w[5],		//mem_write [2]
+			control_out_Pipe_IDEX_w[4],		//branch_ne [1]
+			control_out_Pipe_IDEX_w[3]		//branch_eq [0]
+		}
+	),
+	.data_o(control_out_Pipe_EXMEM_w)
+);
 endmodule
 
