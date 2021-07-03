@@ -62,11 +62,13 @@ wire [4:0] write_register_w;
 wire [4:0] regs_dst_w;
 wire [31:0] pc_w;
 wire [31:0] instruction_w;
+wire [31:0] instruction_Pipe_IFID_w;
 wire [31:0] read_data_1_w;
 wire [31:0] read_data_2_w;
 wire [31:0] inmmediate_extend_w;
 wire [31:0] read_ata_2_r_nmmediate_w;
 wire [31:0] alu_result_w;
+wire [31:0] pc_plus_4_Pipe_IFID_w;
 wire [31:0] pc_plus_4_w;
 wire [31:0] read_data_memory_w;
 wire [31:0] write_back_w;
@@ -77,7 +79,7 @@ wire [31:0] branch_address_w;
 wire [31:0] new_pc_w;
 wire [31:0] pc_no_jmp_w;
 wire [31:0] jmp_address_w;
-wire [31:0] mux_wr_data_or_pc_plus_4_w;
+wire [31:0] mux_wr_data_or_pc_plus_4_Pipe_IFID_w;
 
 
 
@@ -91,7 +93,7 @@ wire [31:0] mux_wr_data_or_pc_plus_4_w;
 Control
 CONTROL_UNIT
 (
-	.opcode_i(instruction_w[31:26]),
+	.opcode_i(instruction_Pipe_IFID_w[31:26]),
 	.logic_ext_o(logic_ext_w),
 	.jal_ctl_o(jal_ctl_w),
 	.jmp_ctl_o(jmp_ctl_ctl_w),
@@ -180,8 +182,8 @@ Multiplexer_2_to_1
 MUX_R_TYPE_OR_I_Type			//0
 (
 	.selector_i(reg_dst_w),
-	.data_0_i(instruction_w[20:16]),
-	.data_1_i(instruction_w[15:11]),
+	.data_0_i(instruction_Pipe_IFID_w[20:16]),
+	.data_1_i(instruction_Pipe_IFID_w[15:11]),
 	
 	.mux_o(regs_dst_w)
 
@@ -196,9 +198,9 @@ REGISTER_FILE_UNIT
 	.reset(reset),
 	.reg_write_i(reg_write_w),
 	.write_register_i(write_register_w),
-	.read_register_1_i(instruction_w[25:21]),
-	.read_register_2_i(instruction_w[20:16]),
-	.write_data_i(mux_wr_data_or_pc_plus_4_w),
+	.read_register_1_i(instruction_Pipe_IFID_w[25:21]),
+	.read_register_2_i(instruction_Pipe_IFID_w[20:16]),
+	.write_data_i(mux_wr_data_or_pc_plus_4_Pipe_IFID_w),
 	.read_data_1_o(read_data_1_w),
 	.read_data_2_o(read_data_2_w)
 );
@@ -211,8 +213,8 @@ MUX_WRITE_DATA_OR_PC_PLUS_4		//1
 (
 	.selector_i(jal_ctl_w),
 	.data_0_i(write_data_reg_file_w),
-	.data_1_i(pc_plus_4_w),
-	.mux_o(mux_wr_data_or_pc_plus_4_w)
+	.data_1_i(pc_plus_4_Pipe_IFID_w),
+	.mux_o(mux_wr_data_or_pc_plus_4_Pipe_IFID_w)
 );
 
 Multiplexer_2_to_1
@@ -231,7 +233,7 @@ Sign_Extend
 SIGNED_EXTEND_FOR_CONSTANTS	
 (   
 	.logic_ext_i(logic_ext_w),
-	.data_i(instruction_w[15:0]),
+	.data_i(instruction_Pipe_IFID_w[15:0]),
 	.sign_extend_o(inmmediate_extend_w)
 );
 
@@ -256,7 +258,7 @@ ALU_Control
 ALU_CTRL
 (
 	.alu_op_i(alu_op_w),
-	.alu_function_i(instruction_w[5:0]),
+	.alu_function_i(instruction_Pipe_IFID_w[5:0]),
 	.alu_operation_o(alu_operation_w),
 	.jmp_ctl_o(jmp_ctl_alu_ctl_w)
 );
@@ -282,9 +284,9 @@ ALU_UNIT
 ShiftLogic
 SHIFTLOGIC_UNIT
 (
-	.sl_opcode_i(instruction_w[31:26]),
-	.sl_shamt_i(instruction_w[10:6]),
-	.sl_func_i(instruction_w[5:0]),
+	.sl_opcode_i(instruction_Pipe_IFID_w[31:26]),
+	.sl_shamt_i(instruction_Pipe_IFID_w[10:6]),
+	.sl_func_i(instruction_Pipe_IFID_w[5:0]),
 	.sl_data_i(read_data_2_w),
 	.sl_result_o(shifted_data_w),
 	.sl_shift_o(shift_w)
@@ -316,7 +318,7 @@ assign alu_result_o = write_data_reg_file_w;
 Adder
 BRANCH_DIRECTION
 (
-	.data_0_i(pc_plus_4_w),
+	.data_0_i(pc_plus_4_Pipe_IFID_w),
 	.data_1_i(sl2_imm_w),
 	.result_o(branch_address_w)
 );
@@ -335,7 +337,7 @@ Multiplexer_2_to_1
 PC_PLUS4_OR_BRANCH			//5
 (
 	.selector_i(is_branch_w),
-	.data_0_i(pc_plus_4_w),
+	.data_0_i(pc_plus_4_Pipe_IFID_w),
 	.data_1_i(branch_address_w),
 	.mux_o(pc_no_jmp_w)
 );
@@ -352,8 +354,8 @@ assign is_branch_w = (branch_ne_w & ~zero_w) | (branch_eq_w & zero_w);
 Jump_Address 
 JMP_ADDRESS
 (
-	.pc_plus_4_i(pc_plus_4_w),
-	.address_i(instruction_w[25:0]),
+	.pc_plus_4_i(pc_plus_4_Pipe_IFID_w),
+	.address_i(instruction_Pipe_IFID_w[25:0]),
 	.jmp_address_o(jmp_address_w)
 );
 
@@ -371,6 +373,42 @@ MUX_JMP_CTL
 );
 
 assign jmp_ctl_w = jmp_ctl_ctl_w | jmp_ctl_alu_ctl_w;
+
+
+//******************************************************************/
+//******************************************************************/
+//*********************** Pipeline registers ***********************/
+//******************************************************************/
+//******************************************************************/
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IFID_PROGRAM_MEM
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(instruction_w),
+	.data_o(instruction_Pipe_IFID_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IFID_PC_PLUS_4
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(pc_plus_4_w),
+	.data_o(pc_plus_4_Pipe_IFID_w)
+);
+
+
+
 
 endmodule
 
