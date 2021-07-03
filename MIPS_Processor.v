@@ -60,14 +60,21 @@ wire [2:0] alu_op_w;
 wire [3:0] alu_operation_w;
 wire [4:0] write_register_w;
 wire [4:0] regs_dst_w;
+wire [14:0] control_out_w;
+wire [14:0] control_out_Pipe_IDEX_w;
+wire [31:0] instruction_Pipe_IDEX_w;
 wire [31:0] pc_w;
 wire [31:0] instruction_w;
 wire [31:0] instruction_Pipe_IFID_w;
+wire [31:0] read_data_1_Pipe_IDEX_w;
 wire [31:0] read_data_1_w;
+wire [31:0] read_data_2_Pipe_IDEX_w;
 wire [31:0] read_data_2_w;
+wire [31:0] inmmediate_extend_Pipe_IDEX_w;
 wire [31:0] inmmediate_extend_w;
 wire [31:0] read_ata_2_r_nmmediate_w;
 wire [31:0] alu_result_w;
+wire [31:0] pc_plus_4_Pipe_IDEX_w;
 wire [31:0] pc_plus_4_Pipe_IFID_w;
 wire [31:0] pc_plus_4_w;
 wire [31:0] read_data_memory_w;
@@ -79,7 +86,7 @@ wire [31:0] branch_address_w;
 wire [31:0] new_pc_w;
 wire [31:0] pc_no_jmp_w;
 wire [31:0] jmp_address_w;
-wire [31:0] mux_wr_data_or_pc_plus_4_Pipe_IFID_w;
+wire [31:0] mux_wr_data_or_pc_plus_4_Pipe_IDEX_w;
 
 
 
@@ -107,6 +114,36 @@ CONTROL_UNIT
 	.mem_to_reg_o(mem_to_reg_w),
 	.mem_write_o(mem_write_w)
 );
+
+/*
+bit
+14		logic_ext_w
+13		jal_ctl_w
+12-11	jmp_ctl_ctl_w
+10		reg_dst_w
+9		alu_rc_w
+8		mem_to_reg_w
+7		reg_write_w
+6		mem_read_w
+5		mem_write_w
+4		branch_ne_w
+3		branch_eq_w
+2-1		alu_op_w
+*/
+assign control_out_w = {
+	logic_ext_w,
+	jal_ctl_w,
+	jmp_ctl_ctl_w,
+	reg_dst_w,
+	alu_rc_w,
+	mem_to_reg_w,
+	reg_write_w,
+	mem_read_w,
+	mem_write_w,
+	branch_ne_w,
+	branch_eq_w,
+	alu_op_w
+};
 
 Program_Counter
 PC
@@ -150,9 +187,9 @@ Data_Memory
 DATA_MEMORY			//create data memory instance
 (
 	.clk(clk),
-	.mem_read_i(mem_read_w),
-	.mem_write_i(mem_write_w),
-	.write_data_i(read_data_2_w),
+	.mem_read_i(control_out_Pipe_IDEX_w[6]),
+	.mem_write_i(control_out_Pipe_IDEX_w[5]),
+	.write_data_i(read_data_2_Pipe_IDEX_w),
 	.address_i(alu_result_w),
 	.data_o(read_data_memory_w)
 );
@@ -163,7 +200,7 @@ Multiplexer_2_to_1
 )
 MUX_READ_DATA_MEM_OR_ALU_RESULT		//4	
 (
-	.selector_i(mem_to_reg_w),
+	.selector_i(control_out_Pipe_IDEX_w[8]),
 	.data_0_i(alu_result_w),
 	.data_1_i(read_data_memory_w),
 	.mux_o(write_back_w)
@@ -181,9 +218,9 @@ Multiplexer_2_to_1
 )
 MUX_R_TYPE_OR_I_Type			//0
 (
-	.selector_i(reg_dst_w),
-	.data_0_i(instruction_Pipe_IFID_w[20:16]),
-	.data_1_i(instruction_Pipe_IFID_w[15:11]),
+	.selector_i(control_out_Pipe_IDEX_w[10]),
+	.data_0_i(instruction_Pipe_IDEX_w[20:16]),
+	.data_1_i(instruction_Pipe_IDEX_w[15:11]),
 	
 	.mux_o(regs_dst_w)
 
@@ -196,11 +233,11 @@ REGISTER_FILE_UNIT
 (
 	.clk(clk),
 	.reset(reset),
-	.reg_write_i(reg_write_w),
+	.reg_write_i(control_out_Pipe_IDEX_w[7]),
 	.write_register_i(write_register_w),
 	.read_register_1_i(instruction_Pipe_IFID_w[25:21]),
 	.read_register_2_i(instruction_Pipe_IFID_w[20:16]),
-	.write_data_i(mux_wr_data_or_pc_plus_4_Pipe_IFID_w),
+	.write_data_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
 	.read_data_1_o(read_data_1_w),
 	.read_data_2_o(read_data_2_w)
 );
@@ -211,10 +248,10 @@ Multiplexer_2_to_1
 )
 MUX_WRITE_DATA_OR_PC_PLUS_4		//1
 (
-	.selector_i(jal_ctl_w),
+	.selector_i(control_out_Pipe_IDEX_w[13]),
 	.data_0_i(write_data_reg_file_w),
-	.data_1_i(pc_plus_4_Pipe_IFID_w),
-	.mux_o(mux_wr_data_or_pc_plus_4_Pipe_IFID_w)
+	.data_1_i(pc_plus_4_Pipe_IDEX_w),
+	.mux_o(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w)
 );
 
 Multiplexer_2_to_1
@@ -223,7 +260,7 @@ Multiplexer_2_to_1
 )
 MUX_RA_OR_REGS			//2
 (
-	.selector_i(jal_ctl_w),
+	.selector_i(control_out_Pipe_IDEX_w[13]),
 	.data_0_i(regs_dst_w),
 	.data_1_i(5'd31),
 	.mux_o(write_register_w)
@@ -245,9 +282,9 @@ Multiplexer_2_to_1
 )
 MUX_READ_DATA_2_OR_IMMEDIATE		//3
 (
-	.selector_i(alu_rc_w),
-	.data_0_i(read_data_2_w),
-	.data_1_i(inmmediate_extend_w),
+	.selector_i(control_out_Pipe_IDEX_w[9]),
+	.data_0_i(read_data_2_Pipe_IDEX_w),
+	.data_1_i(inmmediate_extend_Pipe_IDEX_w),
 	
 	.mux_o(read_ata_2_r_nmmediate_w)
 
@@ -257,8 +294,8 @@ MUX_READ_DATA_2_OR_IMMEDIATE		//3
 ALU_Control
 ALU_CTRL
 (
-	.alu_op_i(alu_op_w),
-	.alu_function_i(instruction_Pipe_IFID_w[5:0]),
+	.alu_op_i(control_out_Pipe_IDEX_w[2:0]),
+	.alu_function_i(instruction_Pipe_IDEX_w[5:0]),
 	.alu_operation_o(alu_operation_w),
 	.jmp_ctl_o(jmp_ctl_alu_ctl_w)
 );
@@ -269,7 +306,7 @@ ALU
 ALU_UNIT
 (
 	.alu_operation_i(alu_operation_w),
-	.a_i(read_data_1_w),
+	.a_i(read_data_1_Pipe_IDEX_w),
 	.b_i(read_ata_2_r_nmmediate_w),
 	.zero_o(zero_w),
 	.alu_data_o(alu_result_w)
@@ -284,10 +321,10 @@ ALU_UNIT
 ShiftLogic
 SHIFTLOGIC_UNIT
 (
-	.sl_opcode_i(instruction_Pipe_IFID_w[31:26]),
-	.sl_shamt_i(instruction_Pipe_IFID_w[10:6]),
-	.sl_func_i(instruction_Pipe_IFID_w[5:0]),
-	.sl_data_i(read_data_2_w),
+	.sl_opcode_i(instruction_Pipe_IDEX_w[31:26]),
+	.sl_shamt_i(instruction_Pipe_IDEX_w[10:6]),
+	.sl_func_i(instruction_Pipe_IDEX_w[5:0]),
+	.sl_data_i(read_data_2_Pipe_IDEX_w),
 	.sl_result_o(shifted_data_w),
 	.sl_shift_o(shift_w)
 );
@@ -318,7 +355,7 @@ assign alu_result_o = write_data_reg_file_w;
 Adder
 BRANCH_DIRECTION
 (
-	.data_0_i(pc_plus_4_Pipe_IFID_w),
+	.data_0_i(pc_plus_4_Pipe_IDEX_w),
 	.data_1_i(sl2_imm_w),
 	.result_o(branch_address_w)
 );
@@ -326,7 +363,7 @@ BRANCH_DIRECTION
 Shift_Left_2 
 SHIFT_LEFT_2_EXT_IMMEDIATE
 (   
-	.data_i(inmmediate_extend_w),
+	.data_i(inmmediate_extend_Pipe_IDEX_w),
 	.data_o(sl2_imm_w)
 );
 
@@ -337,12 +374,12 @@ Multiplexer_2_to_1
 PC_PLUS4_OR_BRANCH			//5
 (
 	.selector_i(is_branch_w),
-	.data_0_i(pc_plus_4_Pipe_IFID_w),
+	.data_0_i(pc_plus_4_Pipe_IDEX_w),
 	.data_1_i(branch_address_w),
 	.mux_o(pc_no_jmp_w)
 );
 
-assign is_branch_w = (branch_ne_w & ~zero_w) | (branch_eq_w & zero_w);
+assign is_branch_w = (control_out_Pipe_IDEX_w[4] & ~zero_w) | (control_out_Pipe_IDEX_w[3] & zero_w);
 
 
 //******************************************************************/
@@ -354,8 +391,8 @@ assign is_branch_w = (branch_ne_w & ~zero_w) | (branch_eq_w & zero_w);
 Jump_Address 
 JMP_ADDRESS
 (
-	.pc_plus_4_i(pc_plus_4_Pipe_IFID_w),
-	.address_i(instruction_Pipe_IFID_w[25:0]),
+	.pc_plus_4_i(pc_plus_4_Pipe_IDEX_w),
+	.address_i(instruction_Pipe_IDEX_w[25:0]),
 	.jmp_address_o(jmp_address_w)
 );
 
@@ -368,11 +405,11 @@ MUX_JMP_CTL
 	.selector_i(jmp_ctl_w),
 	.data_0_i(pc_no_jmp_w),
 	.data_1_i(jmp_address_w),
-	.data_2_i(read_data_1_w),
+	.data_2_i(read_data_1_Pipe_IDEX_w),
 	.mux_o(new_pc_w)
 );
 
-assign jmp_ctl_w = jmp_ctl_ctl_w | jmp_ctl_alu_ctl_w;
+assign jmp_ctl_w = control_out_Pipe_IDEX_w[12:11] | jmp_ctl_alu_ctl_w;
 
 
 //******************************************************************/
@@ -407,8 +444,83 @@ PIPER_IFID_PC_PLUS_4
 	.data_o(pc_plus_4_Pipe_IFID_w)
 );
 
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IDEX_PC_PLUS_4
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(pc_plus_4_Pipe_IFID_w),
+	.data_o(pc_plus_4_Pipe_IDEX_w)
+);
 
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IDEX_SIGN_EXTEND
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(inmmediate_extend_w),
+	.data_o(inmmediate_extend_Pipe_IDEX_w)
+);
 
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IDEX_ALU_FUNC
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(instruction_Pipe_IFID_w),
+	.data_o(instruction_Pipe_IDEX_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IDEX_READ_DATA_1
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(read_data_1_w),
+	.data_o(read_data_1_Pipe_IDEX_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_IDEX_READ_DATA_2
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(read_data_2_w),
+	.data_o(read_data_2_Pipe_IDEX_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(15)
+)
+PIPER_IDEX_CONTROL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(control_out_w),
+	.data_o(control_out_Pipe_IDEX_w)
+);
 
 endmodule
 
