@@ -43,9 +43,11 @@ module MIPS_Processor
 wire reg_dst_w;
 wire alu_rc_w;
 wire reg_write_w;
+wire reg_write_Pipe_MEMWB_w;
 wire zero_w;
 wire zero_Pipe_EXMEM_w;
 wire mem_to_reg_w;
+wire mem_to_reg_Pipe_MEMWB_w;
 wire mem_read_w;
 wire mem_write_w;
 wire shift_w;
@@ -61,8 +63,9 @@ wire [2:0] alu_op_w;
 wire [3:0] alu_operation_w;
 wire [4:0] write_register_w;
 wire [4:0] write_register_Pipe_EXMEM_w;
+wire [4:0] write_register_Pipe_MEMWB_w;
 wire [4:0] regs_dst_w;
-wire [4:0] control_out_Pipe_EXMEM_w;
+wire [5:0] control_out_Pipe_EXMEM_w;
 wire [14:0] control_out_w;
 wire [14:0] control_out_Pipe_IDEX_w;
 wire [31:0] instruction_Pipe_IDEX_w;
@@ -79,10 +82,12 @@ wire [31:0] inmmediate_extend_w;
 wire [31:0] read_ata_2_r_nmmediate_w;
 wire [31:0] alu_result_w;
 wire [31:0] alu_result_Pipe_EXMEM_w;
+wire [31:0] alu_result_Pipe_MEMWB_w;
 wire [31:0] pc_plus_4_Pipe_IDEX_w;
 wire [31:0] pc_plus_4_Pipe_IFID_w;
 wire [31:0] pc_plus_4_w;
 wire [31:0] read_data_memory_w;
+wire [31:0] read_data_memory_Pipe_MEMWB_w;
 wire [31:0] write_back_w;
 wire [31:0] shifted_data_w;
 wire [31:0] write_data_reg_file_w;
@@ -206,11 +211,10 @@ Multiplexer_2_to_1
 )
 MUX_READ_DATA_MEM_OR_ALU_RESULT		//4	
 (
-	.selector_i(control_out_Pipe_IDEX_w[8]),
-	.data_0_i(alu_result_Pipe_EXMEM_w),
-	.data_1_i(read_data_memory_w),
+	.selector_i(mem_to_reg_Pipe_MEMWB_w),
+	.data_0_i(alu_result_Pipe_MEMWB_w),
+	.data_1_i(read_data_memory_Pipe_MEMWB_w),
 	.mux_o(write_back_w)
-
 );
 
 //******************************************************************/
@@ -239,8 +243,8 @@ REGISTER_FILE_UNIT
 (
 	.clk(clk),
 	.reset(reset),
-	.reg_write_i(control_out_Pipe_EXMEM_w[4]),
-	.write_register_i(write_register_Pipe_EXMEM_w),
+	.reg_write_i(reg_write_Pipe_MEMWB_w),
+	.write_register_i(write_register_Pipe_MEMWB_w),
 	.read_register_1_i(instruction_Pipe_IFID_w[25:21]),
 	.read_register_2_i(instruction_Pipe_IFID_w[20:16]),
 	.write_data_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
@@ -596,7 +600,7 @@ PIPER_EXMEM_WRITE_REGISTER
 
 Register_Pipeline
 #(
-	.N_BITS(5)
+	.N_BITS(6)
 )
 PIPER_EXMEM_CONTROL
 (
@@ -605,6 +609,7 @@ PIPER_EXMEM_CONTROL
 	.enable(1'b1),
 	.data_i(
 		{
+			control_out_Pipe_IDEX_w[8],		//mem_to_reg [5]
 			control_out_Pipe_IDEX_w[7],		//reg_write [4]
 			control_out_Pipe_IDEX_w[6],		//mem_read [3]
 			control_out_Pipe_IDEX_w[5],		//mem_write [2]
@@ -614,5 +619,71 @@ PIPER_EXMEM_CONTROL
 	),
 	.data_o(control_out_Pipe_EXMEM_w)
 );
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_MEMWB_MEM_TO_REG
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(control_out_Pipe_EXMEM_w[5]),
+	.data_o(mem_to_reg_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_MEMWB_REG_WRITE
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(control_out_Pipe_EXMEM_w[4]),
+	.data_o(reg_write_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_MEMWB_READ_DATA
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(read_data_memory_w),
+	.data_o(read_data_memory_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_MEMWB_ALU_RESULT
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(alu_result_Pipe_EXMEM_w),
+	.data_o(alu_result_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(5)
+)
+PIPER_MEMWB_WRITE_REGISTER
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(write_register_Pipe_EXMEM_w),
+	.data_o(write_register_Pipe_MEMWB_w)
+);
+
 endmodule
 
