@@ -51,6 +51,8 @@ wire mem_to_reg_Pipe_MEMWB_w;
 wire mem_read_w;
 wire mem_write_w;
 wire shift_w;
+wire shift_Pipe_EXMEM_w;
+wire shift_Pipe_MEMWB_w;
 wire branch_ne_w;
 wire branch_eq_w;
 wire is_branch_w;
@@ -90,6 +92,8 @@ wire [31:0] read_data_memory_w;
 wire [31:0] read_data_memory_Pipe_MEMWB_w;
 wire [31:0] write_back_w;
 wire [31:0] shifted_data_w;
+wire [31:0] shifted_data_Pipe_EXMEM_w;
+wire [31:0] shifted_data_Pipe_MEMWB_w;
 wire [31:0] write_data_reg_file_w;
 wire [31:0] sl2_imm_w;
 wire [31:0] branch_address_w;
@@ -345,9 +349,9 @@ Multiplexer_2_to_1
 )
 MUX_SHIFTLOGIC_OR_WRITE_BACK		//6
 (
-	.selector_i(shift_w),
+	.selector_i(shift_Pipe_MEMWB_w),
 	.data_0_i(write_back_w),
-	.data_1_i(shifted_data_w),
+	.data_1_i(shifted_data_Pipe_MEMWB_w),
 	
 	.mux_o(write_data_reg_file_w)
 );
@@ -384,7 +388,7 @@ Multiplexer_2_to_1
 PC_PLUS4_OR_BRANCH			//5
 (
 	.selector_i(is_branch_w),
-	.data_0_i(pc_plus_4_Pipe_IDEX_w),
+	.data_0_i(pc_plus_4_w),
 	.data_1_i(branch_address_Pipe_EXMEM_w),
 	.mux_o(pc_no_jmp_w)
 );
@@ -402,7 +406,7 @@ assign is_branch_w = (control_out_Pipe_EXMEM_w[1] & ~zero_Pipe_EXMEM_w) |
 Jump_Address 
 JMP_ADDRESS
 (
-	.pc_plus_4_i(pc_plus_4_Pipe_IDEX_w),
+	.pc_plus_4_i(pc_plus_4_w),
 	.address_i(instruction_Pipe_IDEX_w[25:0]),
 	.jmp_address_o(jmp_address_w)
 );
@@ -622,6 +626,32 @@ PIPER_EXMEM_CONTROL
 
 Register_Pipeline
 #(
+	.N_BITS(32)
+)
+PIPER_EXMEM_SHIFTER_OUT
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(shifted_data_w),
+	.data_o(shifted_data_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_EXMEM_SHIFT_SIGNAL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(shift_w),
+	.data_o(shift_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
 	.N_BITS(1)
 )
 PIPER_MEMWB_MEM_TO_REG
@@ -683,6 +713,32 @@ PIPER_MEMWB_WRITE_REGISTER
 	.enable(1'b1),
 	.data_i(write_register_Pipe_EXMEM_w),
 	.data_o(write_register_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(32)
+)
+PIPER_MEMWB_SHIFTER_OUT
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(shifted_data_Pipe_EXMEM_w),
+	.data_o(shifted_data_Pipe_MEMWB_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_MEMWB_SHIFT_SIGNAL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(shift_Pipe_EXMEM_w),
+	.data_o(shift_Pipe_MEMWB_w)
 );
 
 endmodule

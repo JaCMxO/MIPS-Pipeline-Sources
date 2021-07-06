@@ -25,7 +25,7 @@ module Program_Counter
 	output reg [N_BITS-1:0] pc_value_o
 );
 
-always@(negedge reset or posedge clk) begin
+always@(negedge reset or negedge clk) begin
 	if(reset==0)
 		pc_value_o <= 32'h0040_0000;
 	else	

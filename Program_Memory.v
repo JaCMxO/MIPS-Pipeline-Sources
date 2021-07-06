@@ -34,7 +34,7 @@ assign real_address_r = {2'b0, address_i[(DATA_WIDTH-1):23], 1'b0, address_i[21:
 
 	initial
 	begin
-		$readmemh("/home/jaime/MIPS/MIPS-Processor-Sources/text.dat", rom);
+		$readmemh("/home/jaime/MIPS_PIPELINE/MIPS-Pipeline-Sources/text.dat", rom);
 	end
 
 	always @ (real_address_r)
