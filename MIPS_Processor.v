@@ -552,7 +552,7 @@ PIPER_EXMEM_WRITE_DATA
 	.clk(clk),
 	.reset(reset),
 	.enable(1'b1),
-	.data_i(read_data_2_Pipe_IDEX_w),
+	.data_i(mux_alu_src_forwarding_B_w),
 	.data_o(read_data_2_Pipe_EXMEM_w)
 );
 
