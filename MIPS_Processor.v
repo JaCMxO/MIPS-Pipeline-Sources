@@ -61,6 +61,8 @@ wire logic_ext_w;
 wire [1:0] jmp_ctl_ctl_w;
 wire [1:0] jmp_ctl_w;
 wire [1:0] jmp_ctl_alu_ctl_w;
+wire [1:0] forward_A_w;
+wire [1:0] forward_B_w;
 wire [2:0] alu_op_w;
 wire [3:0] alu_operation_w;
 wire [4:0] write_register_w;
@@ -102,6 +104,10 @@ wire [31:0] new_pc_w;
 wire [31:0] pc_no_jmp_w;
 wire [31:0] jmp_address_w;
 wire [31:0] mux_wr_data_or_pc_plus_4_Pipe_IDEX_w;
+wire [31:0] alu_input_A_w;
+wire [31:0] mux_alu_src_forwarding_B_w;
+wire [31:0] mux_regs_B_w;
+wire [31:0] ex_data_out_w;
 
 
 
@@ -263,7 +269,7 @@ Multiplexer_2_to_1
 MUX_WRITE_DATA_OR_PC_PLUS_4		//1
 (
 	.selector_i(control_out_Pipe_IDEX_w[13]),
-	.data_0_i(write_data_reg_file_w),
+	.data_0_i(write_back_w),
 	.data_1_i(pc_plus_4_Pipe_IDEX_w),
 	.mux_o(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w)
 );
@@ -297,7 +303,7 @@ Multiplexer_2_to_1
 MUX_READ_DATA_2_OR_IMMEDIATE		//3
 (
 	.selector_i(control_out_Pipe_IDEX_w[9]),
-	.data_0_i(read_data_2_Pipe_IDEX_w),
+	.data_0_i(mux_alu_src_forwarding_B_w),
 	.data_1_i(inmmediate_extend_Pipe_IDEX_w),
 	
 	.mux_o(read_ata_2_r_nmmediate_w)
@@ -320,7 +326,7 @@ ALU
 ALU_UNIT
 (
 	.alu_operation_i(alu_operation_w),
-	.a_i(read_data_1_Pipe_IDEX_w),
+	.a_i(alu_input_A_w),
 	.b_i(read_ata_2_r_nmmediate_w),
 	.zero_o(zero_w),
 	.alu_data_o(alu_result_w)
@@ -338,7 +344,7 @@ SHIFTLOGIC_UNIT
 	.sl_opcode_i(instruction_Pipe_IDEX_w[31:26]),
 	.sl_shamt_i(instruction_Pipe_IDEX_w[10:6]),
 	.sl_func_i(instruction_Pipe_IDEX_w[5:0]),
-	.sl_data_i(read_data_2_Pipe_IDEX_w),
+	.sl_data_i(mux_alu_src_forwarding_B_w),
 	.sl_result_o(shifted_data_w),
 	.sl_shift_o(shift_w)
 );
@@ -349,16 +355,16 @@ Multiplexer_2_to_1
 )
 MUX_SHIFTLOGIC_OR_WRITE_BACK		//6
 (
-	.selector_i(shift_Pipe_MEMWB_w),
-	.data_0_i(write_back_w),
-	.data_1_i(shifted_data_Pipe_MEMWB_w),
+	.selector_i(shift_w),
+	.data_0_i(alu_result_w),
+	.data_1_i(shifted_data_w),
 	
-	.mux_o(write_data_reg_file_w)
+	.mux_o(ex_data_out_w)
 );
 
 
 
-assign alu_result_o = write_data_reg_file_w;
+assign alu_result_o = mux_wr_data_or_pc_plus_4_Pipe_IDEX_w;
 
 //******************************************************************/
 //******************************************************************/
@@ -489,7 +495,7 @@ Register_Pipeline
 #(
 	.N_BITS(32)
 )
-PIPER_IDEX_ALU_FUNC
+PIPER_IDEX_INSTRUCTION
 (
 	.clk(clk),
 	.reset(reset),
@@ -546,7 +552,7 @@ PIPER_EXMEM_ALU_RESULT
 	.clk(clk),
 	.reset(reset),
 	.enable(1'b1),
-	.data_i(alu_result_w),
+	.data_i(ex_data_out_w),
 	.data_o(alu_result_Pipe_EXMEM_w)
 );
 
@@ -739,6 +745,50 @@ PIPER_MEMWB_SHIFT_SIGNAL
 	.enable(1'b1),
 	.data_i(shift_Pipe_EXMEM_w),
 	.data_o(shift_Pipe_MEMWB_w)
+);
+
+//******************************************************************/
+//******************************************************************/
+//**************** Forwarding unit implementation ******************/
+//******************************************************************/
+//******************************************************************/
+Forwarding_Control
+FORWARDING_CONTROL_UNIT
+(
+	.ctl_reg_write_EXMEM_i(control_out_Pipe_EXMEM_w[4]),
+	.ctl_reg_write_MEMWB_i(reg_write_Pipe_MEMWB_w),
+	.reg_rs_IDEX_i(instruction_Pipe_IDEX_w[25:21]),
+	.reg_rt_IDEX_i(instruction_Pipe_IDEX_w[20:16]),
+	.reg_dest_EXMEM_i(write_register_Pipe_EXMEM_w),
+	.reg_dest_MEMWB_i(write_register_Pipe_MEMWB_w),
+	.forward_A_o(forward_A_w),
+	.forward_B_o(forward_B_w)
+);
+
+Multiplexer_3_to_1
+#(
+	.N_BITS(32)
+)
+MUX_ALU_SRC_A
+(
+	.selector_i(forward_A_w),
+	.data_0_i(read_data_1_Pipe_IDEX_w),
+	.data_1_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
+	.data_2_i(alu_result_Pipe_EXMEM_w),
+	.mux_o(alu_input_A_w)
+);
+
+Multiplexer_3_to_1
+#(
+	.N_BITS(32)
+)
+MUX_ALU_SRC_B
+(
+	.selector_i(forward_B_w),
+	.data_0_i(read_data_2_Pipe_IDEX_w),
+	.data_1_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
+	.data_2_i(alu_result_Pipe_EXMEM_w),
+	.mux_o(mux_alu_src_forwarding_B_w)
 );
 
 endmodule
