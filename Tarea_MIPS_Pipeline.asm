@@ -15,6 +15,9 @@ main:
 	sll		$t3, $t2, 8
 	srl		$t4, $t2, 2
 	sll		$t5, $t4, 3
+	addi	$t6, $t5, 10
+	add		$t6, $t5, $t5
+	add 	$t6, $t6, $t6
 	##
 	ori		$s1, $s0, 0x24
 	

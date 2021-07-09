@@ -51,8 +51,6 @@ wire mem_to_reg_Pipe_MEMWB_w;
 wire mem_read_w;
 wire mem_write_w;
 wire shift_w;
-wire shift_Pipe_EXMEM_w;
-wire shift_Pipe_MEMWB_w;
 wire branch_ne_w;
 wire branch_eq_w;
 wire is_branch_w;
@@ -83,7 +81,7 @@ wire [31:0]	read_data_2_Pipe_EXMEM_w;
 wire [31:0] read_data_2_w;
 wire [31:0] inmmediate_extend_Pipe_IDEX_w;
 wire [31:0] inmmediate_extend_w;
-wire [31:0] read_ata_2_r_nmmediate_w;
+wire [31:0] read_data_2_r_immediate_w;
 wire [31:0] alu_result_w;
 wire [31:0] alu_result_Pipe_EXMEM_w;
 wire [31:0] alu_result_Pipe_MEMWB_w;
@@ -94,9 +92,6 @@ wire [31:0] read_data_memory_w;
 wire [31:0] read_data_memory_Pipe_MEMWB_w;
 wire [31:0] write_back_w;
 wire [31:0] shifted_data_w;
-wire [31:0] shifted_data_Pipe_EXMEM_w;
-wire [31:0] shifted_data_Pipe_MEMWB_w;
-wire [31:0] write_data_reg_file_w;
 wire [31:0] sl2_imm_w;
 wire [31:0] branch_address_w;
 wire [31:0] branch_address_Pipe_EXMEM_w;
@@ -106,12 +101,7 @@ wire [31:0] jmp_address_w;
 wire [31:0] mux_wr_data_or_pc_plus_4_Pipe_IDEX_w;
 wire [31:0] alu_input_A_w;
 wire [31:0] mux_alu_src_forwarding_B_w;
-wire [31:0] mux_regs_B_w;
 wire [31:0] ex_data_out_w;
-
-
-
-
 
 //******************************************************************/
 //******************************************************************/
@@ -175,8 +165,6 @@ PC
 	.pc_value_o(pc_w)
 );
 
-
-
 Program_Memory
 #
 (
@@ -187,8 +175,6 @@ ROM
 	.address_i(pc_w),
 	.instruction_o(instruction_w)
 );
-
-
 
 Adder
 PC_Puls_4
@@ -246,8 +232,6 @@ MUX_R_TYPE_OR_I_Type			//0
 
 );
 
-
-
 Register_File
 REGISTER_FILE_UNIT
 (
@@ -294,8 +278,6 @@ SIGNED_EXTEND_FOR_CONSTANTS
 	.sign_extend_o(inmmediate_extend_w)
 );
 
-
-
 Multiplexer_2_to_1
 #(
 	.N_BITS(32)
@@ -306,10 +288,9 @@ MUX_READ_DATA_2_OR_IMMEDIATE		//3
 	.data_0_i(mux_alu_src_forwarding_B_w),
 	.data_1_i(inmmediate_extend_Pipe_IDEX_w),
 	
-	.mux_o(read_ata_2_r_nmmediate_w)
+	.mux_o(read_data_2_r_immediate_w)
 
 );
-
 
 ALU_Control
 ALU_CTRL
@@ -320,18 +301,15 @@ ALU_CTRL
 	.jmp_ctl_o(jmp_ctl_alu_ctl_w)
 );
 
-
-
 ALU
 ALU_UNIT
 (
 	.alu_operation_i(alu_operation_w),
 	.a_i(alu_input_A_w),
-	.b_i(read_ata_2_r_nmmediate_w),
+	.b_i(read_data_2_r_immediate_w),
 	.zero_o(zero_w),
 	.alu_data_o(alu_result_w)
 );
-
 
 //******************************************************************/
 //******************************************************************/
@@ -361,8 +339,6 @@ MUX_SHIFTLOGIC_OR_WRITE_BACK		//6
 	
 	.mux_o(ex_data_out_w)
 );
-
-
 
 assign alu_result_o = mux_wr_data_or_pc_plus_4_Pipe_IDEX_w;
 
@@ -402,7 +378,6 @@ PC_PLUS4_OR_BRANCH			//5
 assign is_branch_w = (control_out_Pipe_EXMEM_w[1] & ~zero_Pipe_EXMEM_w) | 
 					(control_out_Pipe_EXMEM_w[0] & zero_Pipe_EXMEM_w);
 
-
 //******************************************************************/
 //******************************************************************/
 //*********************** jump control *****************************/
@@ -431,7 +406,6 @@ MUX_JMP_CTL
 );
 
 assign jmp_ctl_w = control_out_Pipe_IDEX_w[12:11] | jmp_ctl_alu_ctl_w;
-
 
 //******************************************************************/
 //******************************************************************/
@@ -632,32 +606,6 @@ PIPER_EXMEM_CONTROL
 
 Register_Pipeline
 #(
-	.N_BITS(32)
-)
-PIPER_EXMEM_SHIFTER_OUT
-(
-	.clk(clk),
-	.reset(reset),
-	.enable(1'b1),
-	.data_i(shifted_data_w),
-	.data_o(shifted_data_Pipe_EXMEM_w)
-);
-
-Register_Pipeline
-#(
-	.N_BITS(1)
-)
-PIPER_EXMEM_SHIFT_SIGNAL
-(
-	.clk(clk),
-	.reset(reset),
-	.enable(1'b1),
-	.data_i(shift_w),
-	.data_o(shift_Pipe_EXMEM_w)
-);
-
-Register_Pipeline
-#(
 	.N_BITS(1)
 )
 PIPER_MEMWB_MEM_TO_REG
@@ -721,31 +669,6 @@ PIPER_MEMWB_WRITE_REGISTER
 	.data_o(write_register_Pipe_MEMWB_w)
 );
 
-Register_Pipeline
-#(
-	.N_BITS(32)
-)
-PIPER_MEMWB_SHIFTER_OUT
-(
-	.clk(clk),
-	.reset(reset),
-	.enable(1'b1),
-	.data_i(shifted_data_Pipe_EXMEM_w),
-	.data_o(shifted_data_Pipe_MEMWB_w)
-);
-
-Register_Pipeline
-#(
-	.N_BITS(1)
-)
-PIPER_MEMWB_SHIFT_SIGNAL
-(
-	.clk(clk),
-	.reset(reset),
-	.enable(1'b1),
-	.data_i(shift_Pipe_EXMEM_w),
-	.data_o(shift_Pipe_MEMWB_w)
-);
 
 //******************************************************************/
 //******************************************************************/
