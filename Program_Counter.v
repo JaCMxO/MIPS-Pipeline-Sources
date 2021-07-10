@@ -19,6 +19,7 @@ module Program_Counter
 (
 	input clk,
 	input reset,
+	input enable,
 	input  [N_BITS-1:0] new_pc_i,
 	
 	
@@ -26,10 +27,11 @@ module Program_Counter
 );
 
 always@(negedge reset or negedge clk) begin
-	if(reset==0)
+	if(reset == 0)
 		pc_value_o <= 32'h0040_0000;
-	else	
-		pc_value_o<=new_pc_i;
+	else
+		if(enable == 1)
+			pc_value_o <= new_pc_i;
 end
 
 endmodule

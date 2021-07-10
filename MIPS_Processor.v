@@ -40,8 +40,11 @@ module MIPS_Processor
 //******************************************************************/
 // Data types to connect modules
 
+wire pc_write_w;
+wire IFID_write_w;
+wire ctl_flush_w;
 wire reg_dst_w;
-wire alu_rc_w;
+wire alu_src_w;
 wire reg_write_w;
 wire reg_write_Pipe_MEMWB_w;
 wire zero_w;
@@ -69,6 +72,7 @@ wire [4:0] write_register_Pipe_MEMWB_w;
 wire [4:0] regs_dst_w;
 wire [5:0] control_out_Pipe_EXMEM_w;
 wire [14:0] control_out_w;
+wire [14:0] mux_ctl_flush_w;
 wire [14:0] control_out_Pipe_IDEX_w;
 wire [31:0] instruction_Pipe_IDEX_w;
 wire [31:0] pc_w;
@@ -119,7 +123,7 @@ CONTROL_UNIT
 	.branch_ne_o(branch_ne_w),
 	.branch_eq_o(branch_eq_w),
 	.alu_op_o(alu_op_w),
-	.alu_src_o(alu_rc_w),
+	.alu_src_o(alu_src_w),
 	.reg_write_o(reg_write_w),
 	.mem_read_o(mem_read_w),
 	.mem_to_reg_o(mem_to_reg_w),
@@ -132,7 +136,7 @@ bit
 13		jal_ctl_w
 12-11	jmp_ctl_ctl_w
 10		reg_dst_w
-9		alu_rc_w
+9		alu_src_w
 8		mem_to_reg_w
 7		reg_write_w
 6		mem_read_w
@@ -146,7 +150,7 @@ assign control_out_w = {
 	jal_ctl_w,
 	jmp_ctl_ctl_w,
 	reg_dst_w,
-	alu_rc_w,
+	alu_src_w,
 	mem_to_reg_w,
 	reg_write_w,
 	mem_read_w,
@@ -161,6 +165,7 @@ PC
 (
 	.clk(clk),
 	.reset(reset),
+	.enable(pc_write_w),
 	.new_pc_i(new_pc_w),
 	.pc_value_o(pc_w)
 );
@@ -421,7 +426,7 @@ PIPER_IFID_PROGRAM_MEM
 (
 	.clk(clk),
 	.reset(reset),
-	.enable(1'b1),
+	.enable(IFID_write_w),
 	.data_i(instruction_w),
 	.data_o(instruction_Pipe_IFID_w)
 );
@@ -434,7 +439,7 @@ PIPER_IFID_PC_PLUS_4
 (
 	.clk(clk),
 	.reset(reset),
-	.enable(1'b1),
+	.enable(IFID_write_w),
 	.data_i(pc_plus_4_w),
 	.data_o(pc_plus_4_Pipe_IFID_w)
 );
@@ -513,7 +518,7 @@ PIPER_IDEX_CONTROL
 	.clk(clk),
 	.reset(reset),
 	.enable(1'b1),
-	.data_i(control_out_w),
+	.data_i(mux_ctl_flush_w),
 	.data_o(control_out_Pipe_IDEX_w)
 );
 
@@ -712,6 +717,36 @@ MUX_ALU_SRC_B
 	.data_1_i(mux_wr_data_or_pc_plus_4_Pipe_IDEX_w),
 	.data_2_i(alu_result_Pipe_EXMEM_w),
 	.mux_o(mux_alu_src_forwarding_B_w)
+);
+
+//******************************************************************/
+//******************************************************************/
+//**************** Hazard Detection implementation *****************/
+//******************************************************************/
+//******************************************************************/
+
+Hazard_Detection 
+HAZARD_DETECTION_UNIT
+(
+	.ctl_mem_read_IDEX_i(control_out_Pipe_IDEX_w[6]),
+	.reg_rt_IDEX_i(instruction_Pipe_IDEX_w[20:16]),
+	.reg_rs_IFID_i(instruction_Pipe_IFID_w[25:21]),
+	.reg_rt_IFID_i(instruction_Pipe_IFID_w[20:16]),
+	.PC_write_o(pc_write_w),
+	.IFID_write_o(IFID_write_w),
+	.ctl_flush_o(ctl_flush_w)
+);
+
+Multiplexer_2_to_1
+#(
+	.N_BITS(15)
+)
+MUX_CONTROL_FLUSH
+(
+	.selector_i(ctl_flush_w),
+	.data_0_i({15{1'b0}}),
+	.data_1_i(control_out_w),
+	.mux_o(mux_ctl_flush_w)
 );
 
 endmodule
