@@ -21,7 +21,7 @@ main:
 	## Hazard detection test
 	lw		$v0, 0($s0)
 	#nop
-	lw		$v1, 0($s0)
+	#lw		$v1, 0($s0)
 	#nop
 	add		$v1, $v1, $v0
 	sll		$a0, $v1, 3

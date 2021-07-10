@@ -42,6 +42,12 @@ begin
 		(reg_dest_EXMEM_i != 0) &&
 		(reg_dest_EXMEM_i == reg_rs_IDEX_i)
 	) begin forward_A_o = 2'b10; end
+	else if
+	(
+		ctl_reg_write_MEMWB_i && 
+		(reg_dest_MEMWB_i != 0) && 
+		(reg_dest_MEMWB_i == reg_rs_IDEX_i)
+	) begin forward_A_o = 2'b01; end
 
 
 	if
@@ -50,22 +56,10 @@ begin
 		(reg_dest_EXMEM_i != 0) && 
 		(reg_dest_EXMEM_i == reg_rt_IDEX_i)
 	) begin forward_B_o = 2'b10; end
-
-
-	if
+	else if
 	(
 		ctl_reg_write_MEMWB_i && 
 		(reg_dest_MEMWB_i != 0) && 
-		(reg_dest_EXMEM_i != reg_rs_IDEX_i) && 
-		(reg_dest_MEMWB_i == reg_rs_IDEX_i)
-	) begin forward_A_o = 2'b01; end
-
-
-	if
-	(
-		ctl_reg_write_MEMWB_i && 
-		(reg_dest_MEMWB_i != 0) && 
-		(reg_dest_EXMEM_i != reg_rt_IDEX_i) && 
 		(reg_dest_MEMWB_i == reg_rt_IDEX_i)
 	) begin	forward_B_o = 2'b01; end
 
