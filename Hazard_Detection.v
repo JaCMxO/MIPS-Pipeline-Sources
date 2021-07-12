@@ -14,6 +14,7 @@
 module Hazard_Detection (
 	input ctl_mem_read_IDEX_i,
 	input ctl_jmp_ctl_i,		//second bit of jmp_ctl
+	input ctl_is_branch_i,
 	input [1:0] ctl_alu_ctl_jmp_ctl_i,
 	input [4:0] reg_rt_IDEX_i,
 	input [4:0] reg_rs_IFID_i,
@@ -33,7 +34,8 @@ always
 	reg_rs_IFID_i,
 	reg_rt_IFID_i,
 	ctl_jmp_ctl_i,
-	ctl_alu_ctl_jmp_ctl_i
+	ctl_alu_ctl_jmp_ctl_i,
+	ctl_is_branch_i
 )
 begin
 	PC_write_o = 1'b1;
@@ -64,6 +66,11 @@ begin
 	begin
 		IFID_flush_o = 1'b0;
 		IDEX_flush_o = 1'b0;
+	end
+
+	if(ctl_is_branch_i)
+	begin
+		IFID_flush_o = 1'b0;
 	end
 
 end
