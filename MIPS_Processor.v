@@ -64,6 +64,9 @@ wire jal_ctl_Pipe_EXMEM_w;
 wire jal_ctl_Pipe_MEMWB_w;
 wire logic_ext_w;
 wire make_jmp_w;
+wire ctl_cpy_data_w;
+wire ctl_cpy_data_Pipe_IDEX_w;
+wire ctl_cpy_data_Pipe_EXMEM_w;
 wire [1:0] jmp_ctl_ctl_w;
 wire [1:0] jmp_ctl_w;
 wire [1:0] jmp_ctl_Pipe_EXMEM_w;
@@ -123,6 +126,7 @@ wire [31:0] ex_data_out_w;
 wire [31:0] mux_read_reg_A_w;
 wire [31:0] mux_read_reg_B_w;
 wire [31:0] mem_alu_Pipe_exmem_w;
+wire [31:0] mux_cpy_or_write_w;
 wire [63:0] IFID_input_w;
 wire [63:0] mux_flush_IFID_w;
 wire [174:0] IDEX_input_w;
@@ -222,7 +226,7 @@ DATA_MEMORY			//create data memory instance
 	.clk(clk),
 	.mem_read_i(control_out_Pipe_EXMEM_w[3]),
 	.mem_write_i(control_out_Pipe_EXMEM_w[2]),
-	.write_data_i(write_data_Pipe_EXMEM_w),
+	.write_data_i(mux_cpy_or_write_w),//write_data_Pipe_EXMEM_w
 	.address_i(alu_result_Pipe_EXMEM_w),
 	.data_o(read_data_memory_w)
 );
@@ -546,6 +550,19 @@ PIPER_IDEX_CONTROL
 	.data_o(control_out_Pipe_IDEX_w)
 );
 
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
+PIPER_IDEX_CPY_DATA_CTL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(ctl_cpy_data_w),
+	.data_o(ctl_cpy_data_Pipe_IDEX_w)
+);
+
 //****************************************************************************/
 assign IDEX_input_w = {
 	pc_plus_4_Pipe_IFID_w,					//IDEX_input_w[174:143]
@@ -726,6 +743,19 @@ Register_Pipeline
 #(
 	.N_BITS(1)
 )
+PIPER_EXMEM_CPY_DATA_CTL
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(1'b1),
+	.data_i(ctl_cpy_data_Pipe_IDEX_w),
+	.data_o(ctl_cpy_data_Pipe_EXMEM_w)
+);
+
+Register_Pipeline
+#(
+	.N_BITS(1)
+)
 PIPER_MEMWB_MEM_TO_REG
 (
 	.clk(clk),
@@ -881,6 +911,7 @@ Hazard_Detection
 HAZARD_DETECTION_UNIT
 (
 	.ctl_mem_read_IDEX_i(control_out_Pipe_IDEX_w[6]),
+	.ctl_mem_write_IFID_i(control_out_w[5]),
 	.ctl_jmp_ctl_i(control_out_Pipe_IDEX_w[11]),		//second bit of jmp_ctl
 	.ctl_alu_ctl_jmp_ctl_i(jmp_ctl_alu_ctl_w),
 	.ctl_is_branch_i(is_branch_w),
@@ -891,7 +922,8 @@ HAZARD_DETECTION_UNIT
 	.IFID_write_o(IFID_write_w),
 	.ctl_flush_o(ctl_flush_w),
 	.IFID_flush_o(IFID_flush_w),
-	.IDEX_flush_o(IDEX_flush_w)
+	.IDEX_flush_o(IDEX_flush_w),
+	.mem_cpy_o(ctl_cpy_data_w)
 );
 
 Multiplexer_2_to_1
@@ -995,6 +1027,24 @@ MUX_READ_REGISTER_B
 assign make_jmp_w = (mux_read_reg_A_w == mux_read_reg_B_w) ? 1'b1:1'b0;
 
 assign is_branch_w = (control_out_w[4] & ~make_jmp_w) | (control_out_w[3] & make_jmp_w);
+
+//******************************************************************/
+//******************************************************************/
+//********************** Memory Copy *******************************/
+//******************************************************************/
+//******************************************************************/
+
+Multiplexer_2_to_1
+#(
+	.N_BITS(32)
+)
+MUX_CPY_OR_WRITE
+(
+	.selector_i(ctl_cpy_data_Pipe_EXMEM_w),
+	.data_0_i(write_data_Pipe_EXMEM_w),
+	.data_1_i(read_data_memory_Pipe_MEMWB_w),
+	.mux_o(mux_cpy_or_write_w)
+);
 
 endmodule
 
