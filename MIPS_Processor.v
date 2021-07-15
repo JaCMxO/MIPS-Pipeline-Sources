@@ -423,7 +423,7 @@ Multiplexer_3_to_1
 #(
 	.N_BITS(32)
 )
-MUX_JMP_CTL
+MUX_JMP_CTL						//m3_0
 (
 	.selector_i(jmp_ctl_w),
 	.data_0_i(pc_no_jmp_w),
@@ -879,7 +879,7 @@ Multiplexer_3_to_1
 #(
 	.N_BITS(32)
 )
-MUX_ALU_SRC_A
+MUX_ALU_SRC_A						//m3_1
 (
 	.selector_i(forward_A_w),
 	.data_0_i(read_data_1_Pipe_IDEX_w),
@@ -892,7 +892,7 @@ Multiplexer_3_to_1
 #(
 	.N_BITS(32)
 )
-MUX_ALU_SRC_B
+MUX_ALU_SRC_B						//m3_2
 (
 	.selector_i(forward_B_w),
 	.data_0_i(read_data_2_Pipe_IDEX_w),
@@ -930,7 +930,7 @@ Multiplexer_2_to_1
 #(
 	.N_BITS(15)
 )
-MUX_CONTROL_FLUSH
+MUX_CONTROL_FLUSH					//7
 (
 	.selector_i(ctl_flush_w),
 	.data_0_i({15{1'b0}}),
@@ -947,7 +947,7 @@ Multiplexer_2_to_1
 #(
 	.N_BITS(64)
 )
-MUX_FLUSH_IFID
+MUX_FLUSH_IFID					//8
 (
 	.selector_i(IFID_flush_w),
 	.data_0_i({64{1'b0}}),
@@ -959,7 +959,7 @@ Multiplexer_2_to_1
 #(
 	.N_BITS(175)
 )
-MUX_FLUSH_IDEX
+MUX_FLUSH_IDEX					//9
 (
 	.selector_i(IDEX_flush_w),
 	.data_0_i({175{1'b0}}),
@@ -990,7 +990,7 @@ Multiplexer_2_to_1
 #(
 	.N_BITS(32)
 )
-MUX_MEM_OR_ALU_PIPE_EXMEM
+MUX_MEM_OR_ALU_PIPE_EXMEM					//10
 (
 	.selector_i(control_out_Pipe_EXMEM_w[3]),
 	.data_0_i(alu_result_Pipe_EXMEM_w),
@@ -1002,7 +1002,7 @@ Multiplexer_3_to_1
 #(
 	.N_BITS(32)
 )
-MUX_READ_REGISTER_A
+MUX_READ_REGISTER_A						//m3_3
 (
 	.selector_i(forward_branch_A_w),
 	.data_0_i(read_data_1_w),
@@ -1015,7 +1015,7 @@ Multiplexer_3_to_1
 #(
 	.N_BITS(32)
 )
-MUX_READ_REGISTER_B
+MUX_READ_REGISTER_B						//m3_4
 (
 	.selector_i(forward_branch_B_w),
 	.data_0_i(read_data_2_w),
@@ -1038,7 +1038,7 @@ Multiplexer_2_to_1
 #(
 	.N_BITS(32)
 )
-MUX_CPY_OR_WRITE
+MUX_CPY_OR_WRITE					//11
 (
 	.selector_i(ctl_cpy_data_Pipe_EXMEM_w),
 	.data_0_i(write_data_Pipe_EXMEM_w),
