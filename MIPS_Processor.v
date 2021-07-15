@@ -428,7 +428,7 @@ MUX_JMP_CTL
 	.selector_i(jmp_ctl_w),
 	.data_0_i(pc_no_jmp_w),
 	.data_1_i(jmp_address_w),
-	.data_2_i(read_data_1_Pipe_IDEX_w),
+	.data_2_i(alu_input_A_w),
 	.mux_o(new_pc_w)
 );
 
